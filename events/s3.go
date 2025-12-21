@@ -24,6 +24,7 @@ type S3EventRecord struct {
 	RequestParameters    S3RequestParameters     `json:"requestParameters"`
 	ResponseElements     map[string]string       `json:"responseElements"`
 	S3                   S3Entity                `json:"s3"`
+	GlacierEventData     *S3GlacierEventData     `json:"glacierEventData,omitempty"`
 	ReplicationEventData *S3ReplicationEventData `json:"replicationEventData,omitempty"`
 }
 
@@ -69,6 +70,15 @@ func (o *S3Object) UnmarshalJSON(data []byte) error {
 	o.URLDecodedKey = key
 
 	return nil
+}
+
+type S3GlacierEventData struct {
+	RestoreEventData *S3RestoreEventData `json:"restoreEventData"`
+}
+
+type S3RestoreEventData struct {
+	LifecycleRestorationExpiryTime time.Time `json:"lifecycleRestorationExpiryTime"`
+	LifecycleRestoreStorageClass   string    `json:"lifecycleRestoreStorageClass"`
 }
 
 type S3ReplicationEventData struct {

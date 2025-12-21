@@ -57,6 +57,36 @@ func TestS3MarshalingMalformedJSON(t *testing.T) {
 	test.TestMalformedJson(t, S3Event{})
 }
 
+func TestS3GlacierEventMarshaling(t *testing.T) {
+	// 1. read JSON from file
+	inputJSON := test.ReadJSONFromFile(t, "./testdata/s3-glacier-event.json")
+
+	// 2. de-serialize into Go object
+	var inputEvent S3Event
+	if err := json.Unmarshal(inputJSON, &inputEvent); err != nil {
+		t.Errorf("could not unmarshal event. details: %v", err)
+	}
+
+	// 3. verify glacierEventData is correctly parsed
+	if inputEvent.Records[0].GlacierEventData == nil {
+		t.Error("glacierEventData should not be nil for glacier restore events")
+	}
+
+	// 4. verify restoreEventData is correctly parsed
+	if inputEvent.Records[0].GlacierEventData.RestoreEventData == nil {
+		t.Error("restoreEventData should not be nil")
+	}
+
+	// 5. serialize to JSON
+	outputJSON, err := json.Marshal(inputEvent)
+	if err != nil {
+		t.Errorf("could not marshal event. details: %v", err)
+	}
+
+	// 6. check result
+	assert.JSONEq(t, string(inputJSON), string(outputJSON))
+}
+
 func TestS3ReplicationEventMarshaling(t *testing.T) {
 	// 1. read JSON from file
 	inputJSON := test.ReadJSONFromFile(t, "./testdata/s3-replication-event.json")
