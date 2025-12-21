@@ -15,15 +15,16 @@ type S3Event struct {
 
 // S3EventRecord which wrap record data
 type S3EventRecord struct {
-	EventVersion      string              `json:"eventVersion"`
-	EventSource       string              `json:"eventSource"`
-	AWSRegion         string              `json:"awsRegion"`
-	EventTime         time.Time           `json:"eventTime"`
-	EventName         string              `json:"eventName"`
-	PrincipalID       S3UserIdentity      `json:"userIdentity"`
-	RequestParameters S3RequestParameters `json:"requestParameters"`
-	ResponseElements  map[string]string   `json:"responseElements"`
-	S3                S3Entity            `json:"s3"`
+	EventVersion         string                  `json:"eventVersion"`
+	EventSource          string                  `json:"eventSource"`
+	AWSRegion            string                  `json:"awsRegion"`
+	EventTime            time.Time               `json:"eventTime"`
+	EventName            string                  `json:"eventName"`
+	PrincipalID          S3UserIdentity          `json:"userIdentity"`
+	RequestParameters    S3RequestParameters     `json:"requestParameters"`
+	ResponseElements     map[string]string       `json:"responseElements"`
+	S3                   S3Entity                `json:"s3"`
+	ReplicationEventData *S3ReplicationEventData `json:"replicationEventData,omitempty"`
 }
 
 type S3UserIdentity struct {
@@ -68,6 +69,14 @@ func (o *S3Object) UnmarshalJSON(data []byte) error {
 	o.URLDecodedKey = key
 
 	return nil
+}
+
+type S3ReplicationEventData struct {
+	ReplicationRuleID string    `json:"replicationRuleId"`
+	DestinationBucket string    `json:"destinationBucket"`
+	S3Operation       string    `json:"s3Operation"`
+	RequestTime       time.Time `json:"requestTime"`
+	FailureReason     string    `json:"failureReason"`
 }
 
 type S3TestEvent struct {
