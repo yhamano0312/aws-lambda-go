@@ -112,6 +112,36 @@ func TestS3RestoreEventMarshaling(t *testing.T) {
 	assert.JSONEq(t, string(inputJSON), string(outputJSON))
 }
 
+func TestS3IntelligentTieringEventMarshaling(t *testing.T) {
+	// 1. read JSON from file
+	inputJSON := test.ReadJSONFromFile(t, "./testdata/s3-intelligenttier-event.json")
+
+	// 2. de-serialize into Go object
+	var inputEvent S3Event
+	if err := json.Unmarshal(inputJSON, &inputEvent); err != nil {
+		t.Errorf("could not unmarshal event. details: %v", err)
+	}
+
+	// 3. verify intelligentTieringEventData is correctly parsed
+	if inputEvent.Records[0].IntelligentTieringEventData == nil {
+		t.Error("intelligentTieringEventData should not be nil for intelligent tiering events")
+	}
+
+	// 4. verify destinationAccessTier is correctly parsed
+	if inputEvent.Records[0].IntelligentTieringEventData.DestinationAccessTier == "" {
+		t.Error("destinationAccessTier should not be empty")
+	}
+
+	// 5. serialize to JSON
+	outputJSON, err := json.Marshal(inputEvent)
+	if err != nil {
+		t.Errorf("could not marshal event. details: %v", err)
+	}
+
+	// 6. check result
+	assert.JSONEq(t, string(inputJSON), string(outputJSON))
+}
+
 func TestS3ReplicationEventMarshaling(t *testing.T) {
 	// 1. read JSON from file
 	inputJSON := test.ReadJSONFromFile(t, "./testdata/s3-replication-event.json")

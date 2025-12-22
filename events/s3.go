@@ -15,18 +15,19 @@ type S3Event struct {
 
 // S3EventRecord which wrap record data
 type S3EventRecord struct {
-	EventVersion         string                  `json:"eventVersion"`
-	EventSource          string                  `json:"eventSource"`
-	AWSRegion            string                  `json:"awsRegion"`
-	EventTime            time.Time               `json:"eventTime"`
-	EventName            string                  `json:"eventName"`
-	PrincipalID          S3UserIdentity          `json:"userIdentity"`
-	RequestParameters    S3RequestParameters     `json:"requestParameters"`
-	ResponseElements     map[string]string       `json:"responseElements"`
-	S3                   S3Entity                `json:"s3"`
-	GlacierEventData     *S3GlacierEventData     `json:"glacierEventData,omitempty"`
-	RestoreEventData     *S3RestoreEventData     `json:"restoreEventData,omitempty"`
-	ReplicationEventData *S3ReplicationEventData `json:"replicationEventData,omitempty"`
+	EventVersion                string                         `json:"eventVersion"`
+	EventSource                 string                         `json:"eventSource"`
+	AWSRegion                   string                         `json:"awsRegion"`
+	EventTime                   time.Time                      `json:"eventTime"`
+	EventName                   string                         `json:"eventName"`
+	PrincipalID                 S3UserIdentity                 `json:"userIdentity"`
+	RequestParameters           S3RequestParameters            `json:"requestParameters"`
+	ResponseElements            map[string]string              `json:"responseElements"`
+	S3                          S3Entity                       `json:"s3"`
+	GlacierEventData            *S3GlacierEventData            `json:"glacierEventData,omitempty"`
+	RestoreEventData            *S3RestoreEventData            `json:"restoreEventData,omitempty"`
+	ReplicationEventData        *S3ReplicationEventData        `json:"replicationEventData,omitempty"`
+	IntelligentTieringEventData *S3IntelligentTieringEventData `json:"intelligentTieringEventData,omitempty"`
 }
 
 type S3UserIdentity struct {
@@ -88,6 +89,10 @@ type S3ReplicationEventData struct {
 	S3Operation       string    `json:"s3Operation"`
 	RequestTime       time.Time `json:"requestTime"`
 	FailureReason     string    `json:"failureReason"`
+}
+
+type S3IntelligentTieringEventData struct {
+	DestinationAccessTier string `json:"destinationAccessTier"`
 }
 
 type S3TestEvent struct {
