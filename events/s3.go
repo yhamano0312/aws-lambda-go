@@ -25,6 +25,7 @@ type S3EventRecord struct {
 	ResponseElements     map[string]string       `json:"responseElements"`
 	S3                   S3Entity                `json:"s3"`
 	GlacierEventData     *S3GlacierEventData     `json:"glacierEventData,omitempty"`
+	RestoreEventData     *S3RestoreEventData     `json:"restoreEventData,omitempty"`
 	ReplicationEventData *S3ReplicationEventData `json:"replicationEventData,omitempty"`
 }
 

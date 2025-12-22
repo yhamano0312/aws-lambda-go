@@ -87,6 +87,31 @@ func TestS3GlacierEventMarshaling(t *testing.T) {
 	assert.JSONEq(t, string(inputJSON), string(outputJSON))
 }
 
+func TestS3RestoreEventMarshaling(t *testing.T) {
+	// 1. read JSON from file
+	inputJSON := test.ReadJSONFromFile(t, "./testdata/s3-restore-event.json")
+
+	// 2. de-serialize into Go object
+	var inputEvent S3Event
+	if err := json.Unmarshal(inputJSON, &inputEvent); err != nil {
+		t.Errorf("could not unmarshal event. details: %v", err)
+	}
+
+	// 3. verify restoreEventData is correctly parsed
+	if inputEvent.Records[0].RestoreEventData == nil {
+		t.Error("restoreEventData should not be nil")
+	}
+
+	// 4. serialize to JSON
+	outputJSON, err := json.Marshal(inputEvent)
+	if err != nil {
+		t.Errorf("could not marshal event. details: %v", err)
+	}
+
+	// 5. check result
+	assert.JSONEq(t, string(inputJSON), string(outputJSON))
+}
+
 func TestS3ReplicationEventMarshaling(t *testing.T) {
 	// 1. read JSON from file
 	inputJSON := test.ReadJSONFromFile(t, "./testdata/s3-replication-event.json")
