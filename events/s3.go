@@ -28,6 +28,7 @@ type S3EventRecord struct {
 	RestoreEventData            *S3RestoreEventData            `json:"restoreEventData,omitempty"`
 	ReplicationEventData        *S3ReplicationEventData        `json:"replicationEventData,omitempty"`
 	IntelligentTieringEventData *S3IntelligentTieringEventData `json:"intelligentTieringEventData,omitempty"`
+	LifecycleEventData          *S3LifecycleEventData          `json:"lifecycleEventData,omitempty"`
 }
 
 type S3UserIdentity struct {
@@ -93,6 +94,14 @@ type S3ReplicationEventData struct {
 
 type S3IntelligentTieringEventData struct {
 	DestinationAccessTier string `json:"destinationAccessTier"`
+}
+
+type S3LifecycleEventData struct {
+	TransitionEventData *S3TransitionEventData `json:"transitionEventData"`
+}
+
+type S3TransitionEventData struct {
+	DestinationStorageClass string `json:"destinationStorageClass"`
 }
 
 type S3TestEvent struct {

@@ -142,6 +142,41 @@ func TestS3IntelligentTieringEventMarshaling(t *testing.T) {
 	assert.JSONEq(t, string(inputJSON), string(outputJSON))
 }
 
+func TestS3LifecycleEventMarshaling(t *testing.T) {
+	// 1. read JSON from file
+	inputJSON := test.ReadJSONFromFile(t, "./testdata/s3-lifecycle-event.json")
+
+	// 2. de-serialize into Go object
+	var inputEvent S3Event
+	if err := json.Unmarshal(inputJSON, &inputEvent); err != nil {
+		t.Errorf("could not unmarshal event. details: %v", err)
+	}
+
+	// 3. verify lifecycleEventData is correctly parsed
+	if inputEvent.Records[0].LifecycleEventData == nil {
+		t.Error("lifecycleEventData should not be nil for lifecycle events")
+	}
+
+	// 4. verify transitionEventData is correctly parsed
+	if inputEvent.Records[0].LifecycleEventData.TransitionEventData == nil {
+		t.Error("transitionEventData should not be nil")
+	}
+
+	// 5. verify destinationStorageClass is correctly parsed
+	if inputEvent.Records[0].LifecycleEventData.TransitionEventData.DestinationStorageClass == "" {
+		t.Error("destinationStorageClass should not be empty")
+	}
+
+	// 6. serialize to JSON
+	outputJSON, err := json.Marshal(inputEvent)
+	if err != nil {
+		t.Errorf("could not marshal event. details: %v", err)
+	}
+
+	// 7. check result
+	assert.JSONEq(t, string(inputJSON), string(outputJSON))
+}
+
 func TestS3ReplicationEventMarshaling(t *testing.T) {
 	// 1. read JSON from file
 	inputJSON := test.ReadJSONFromFile(t, "./testdata/s3-replication-event.json")
