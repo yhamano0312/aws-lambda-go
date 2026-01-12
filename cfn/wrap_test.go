@@ -7,48 +7,103 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil" //nolint: staticcheck
 	"net/http"
 	"testing"
 
-	"github.com/aws/aws-lambda-go/lambdacontext"
 	"github.com/stretchr/testify/assert"
 )
 
 var testEvent = &Event{
-	RequestType:       RequestCreate,
-	RequestID:         "unique id for this create request",
-	ResponseURL:       "http://pre-signed-S3-url-for-response",
-	LogicalResourceID: "MyTestResource",
-	StackID:           "arn:aws:cloudformation:us-west-2:EXAMPLE/stack-name/guid",
+	RequestType:        RequestUpdate,
+	RequestID:          "unique id for this create request",
+	ResponseURL:        "http://pre-signed-S3-url-for-response",
+	LogicalResourceID:  "MyTestResource",
+	PhysicalResourceID: "prevPhysicalResourceID",
+	StackID:            "arn:aws:cloudformation:us-west-2:EXAMPLE/stack-name/guid",
 }
 
-func TestCopyLambdaLogStream(t *testing.T) {
-	lgs := lambdacontext.LogStreamName
-	lambdacontext.LogStreamName = "DUMMYLOGSTREAMNAME"
+func TestLambdaPhysicalResourceId(t *testing.T) {
 
-	client := &mockClient{
-		DoFunc: func(req *http.Request) (*http.Response, error) {
-			response := extractResponseBody(t, req)
+	tests := []struct {
+		// Input to the lambda
+		inputRequestType RequestType
 
-			assert.Equal(t, StatusSuccess, response.Status)
-			assert.Equal(t, testEvent.LogicalResourceID, response.LogicalResourceID)
-			assert.Equal(t, "DUMMYLOGSTREAMNAME", response.PhysicalResourceID)
+		// Output from the lambda
+		returnErr                error
+		returnPhysicalResourceID string
 
-			return &http.Response{
-				StatusCode: http.StatusOK,
-				Body:       nopCloser{bytes.NewBufferString("")},
-			}, nil
-		},
+		// The PhysicalResourceID to test
+		expectedPhysicalResourceID string
+	}{
+		// For Create with no returned PhysicalResourceID
+		{RequestCreate, nil, "", testEvent.RequestID}, // Use RequestID as default for PhysicalResourceID
+		{RequestCreate, fmt.Errorf("dummy error"), "", testEvent.RequestID},
+
+		// For Create with PhysicalResourceID
+		{RequestCreate, nil, "newPhysicalResourceID", "newPhysicalResourceID"},
+		{RequestCreate, fmt.Errorf("dummy error"), "newPhysicalResourceID", "newPhysicalResourceID"},
+
+		// For Update with no returned PhysicalResourceID
+		{RequestUpdate, nil, "", "prevPhysicalResourceID"},
+		{RequestUpdate, fmt.Errorf("dummy error"), "", "prevPhysicalResourceID"},
+
+		// For Update with returned PhysicalResourceID
+		{RequestUpdate, nil, "newPhysicalResourceID", "newPhysicalResourceID"},
+		{RequestUpdate, fmt.Errorf("dummy error"), "newPhysicalResourceID", "newPhysicalResourceID"},
+
+		// For Delete with no returned PhysicalResourceID
+		{RequestDelete, nil, "", "prevPhysicalResourceID"},
+		{RequestDelete, fmt.Errorf("dummy error"), "", "prevPhysicalResourceID"},
+
+		// For Delete with returned PhysicalResourceID = old PhysicalResourceID
+		{RequestDelete, nil, "prevPhysicalResourceID", "prevPhysicalResourceID"},
+		{RequestDelete, fmt.Errorf("dummy error"), "prevPhysicalResourceID", "prevPhysicalResourceID"},
+
+		// For Delete with returned PhysicalResourceID != old PhysicalResourceID
+		// Technically, lambda handlers shouldn't return a different physical resource id upon deletion.
+		// Typescript CDK implementation for handlers would return an error here.
+		// But CFn ignores the returned PhysicalResourceID for deletion so it doesn't matter.
+		{RequestDelete, nil, "newPhysicalResourceID", "newPhysicalResourceID"},
+		{RequestDelete, fmt.Errorf("dummy error"), "newPhysicalResourceID", "newPhysicalResourceID"},
 	}
+	for _, test := range tests {
 
-	fn := func(ctx context.Context, event Event) (physicalResourceID string, data map[string]interface{}, err error) {
-		return
+		curTestEvent := *testEvent
+		curTestEvent.RequestType = test.inputRequestType
+
+		if curTestEvent.RequestType == RequestCreate {
+			curTestEvent.PhysicalResourceID = ""
+		}
+
+		client := &mockClient{
+			DoFunc: func(req *http.Request) (*http.Response, error) {
+				response := extractResponseBody(t, req)
+
+				if test.returnErr == nil {
+					assert.Equal(t, StatusSuccess, response.Status)
+				} else {
+					assert.Equal(t, StatusFailed, response.Status)
+				}
+
+				assert.Equal(t, curTestEvent.LogicalResourceID, response.LogicalResourceID)
+				assert.Equal(t, test.expectedPhysicalResourceID, response.PhysicalResourceID)
+
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body:       nopCloser{bytes.NewBufferString("")},
+				}, nil
+			},
+		}
+
+		fn := func(ctx context.Context, event Event) (physicalResourceID string, data map[string]interface{}, err error) {
+			return test.returnPhysicalResourceID, nil, test.returnErr
+		}
+
+		_, err := lambdaWrapWithClient(fn, client)(context.TODO(), curTestEvent)
+		assert.NoError(t, err)
 	}
-
-	_, err := lambdaWrapWithClient(fn, client)(context.TODO(), *testEvent)
-	assert.NoError(t, err)
-	lambdacontext.LogStreamName = lgs
 }
 
 func TestPanicSendsFailure(t *testing.T) {
@@ -58,6 +113,9 @@ func TestPanicSendsFailure(t *testing.T) {
 		DoFunc: func(req *http.Request) (*http.Response, error) {
 			response := extractResponseBody(t, req)
 			assert.Equal(t, StatusFailed, response.Status)
+
+			// Even in a panic, a dummy PhysicalResourceID should be returned to ensure the error is surfaced correctly
+			assert.Equal(t, testEvent.PhysicalResourceID, response.PhysicalResourceID)
 			didSendStatus = response.Status == StatusFailed
 
 			return &http.Response{
@@ -111,7 +169,7 @@ func TestWrappedError(t *testing.T) {
 			response := extractResponseBody(t, req)
 
 			assert.Equal(t, StatusFailed, response.Status)
-			assert.Empty(t, response.PhysicalResourceID)
+			assert.Equal(t, testEvent.PhysicalResourceID, response.PhysicalResourceID)
 			assert.Equal(t, "failed to create resource", response.Reason)
 
 			return &http.Response{
